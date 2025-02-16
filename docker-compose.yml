@@ -1,0 +1,51 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    networks:
+      - kafka-net
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENER_SECURITY_PROTOCOL=PLAINTEXT
+      - KAFKA_LISTENER_INTERNAL_PORT=9093
+      - KAFKA_LISTENER_PORT=9092
+      - KAFKA_LISTENER_NAME_INTERNAL=INTERNAL
+      - KAFKA_LISTENERS=INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+      - KAFKA_ADVERTISED_LISTENERS=INSIDE://kafka:9093,OUTSIDE://localhost:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      - KAFKA_LISTENER_INTERNAL=INTERNAL
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_ADVERTISED_LISTENER_INTERNAL=INSIDE://kafka:9093
+      - KAFKA_LISTENER_INTERNAL=INTERNAL
+      - KAFKA_LOG_DIRS=/tmp/broker-metadata
+    networks:
+      - kafka-net
+    depends_on:
+      - zookeeper
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic user-topic --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1
+
+networks:
+  kafka-net:
+    driver: bridge
